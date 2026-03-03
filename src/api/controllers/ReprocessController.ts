@@ -20,7 +20,7 @@ export class ReprocessController {
       chainId: env.CHAIN_ID,
       fromBlock,
       toBlock,
-      tokenAddress: tokenAddress as `0x${string}` | undefined,
+      ...(tokenAddress !== undefined ? { tokenAddress: tokenAddress as `0x${string}` } : {}),
     });
 
     const normalizeResult = await this.normalizeEventsUseCase.execute();

@@ -3,15 +3,16 @@ import type { ILogger } from '../../shared/utils/ILogger.js';
 import { env } from '../../shared/config/env.js';
 
 function createPinoLogger(bindings?: Record<string, unknown>): ILogger {
-  const base = pino({
+  const pinoOptions: pino.LoggerOptions = {
     level: env.LOG_LEVEL,
-    transport:
-      env.NODE_ENV === 'development'
-        ? { target: 'pino-pretty', options: { colorize: true } }
-        : undefined,
     base: { pid: process.pid },
     timestamp: pino.stdTimeFunctions.isoTime,
-  });
+    ...(env.NODE_ENV === 'development'
+      ? { transport: { target: 'pino-pretty', options: { colorize: true } } }
+      : {}),
+  };
+
+  const base = pino(pinoOptions);
 
   const instance = bindings ? base.child(bindings) : base;
 

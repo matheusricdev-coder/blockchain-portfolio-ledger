@@ -43,7 +43,7 @@ export class IndexBlocksUseCase {
     const logs = await this.blockchainClient.getErc20Logs({
       fromBlock: BigInt(fromBlock),
       toBlock: BigInt(toBlock),
-      tokenAddress: input.tokenAddress,
+      ...(input.tokenAddress !== undefined ? { tokenAddress: input.tokenAddress } : {}),
     });
 
     log.info('Fetched ERC-20 Transfer logs', { count: logs.length });
