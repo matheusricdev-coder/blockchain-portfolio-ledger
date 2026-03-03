@@ -1,6 +1,9 @@
 import type { FastifyInstance } from 'fastify';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ReprocessController } from '../controllers/ReprocessController.js';
 import { reprocessBodySchema } from '../schemas/wallet.schemas.js';
+
+const bodyJsonSchema = zodToJsonSchema(reprocessBodySchema);
 
 export function registerReprocessRoutes(
   fastify: FastifyInstance,
@@ -10,7 +13,7 @@ export function registerReprocessRoutes(
     '/reprocess',
     {
       schema: {
-        body: reprocessBodySchema,
+        body: bodyJsonSchema,
       },
     },
     (req, reply) => controller.reprocess(req, reply),
