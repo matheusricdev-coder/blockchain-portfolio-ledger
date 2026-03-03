@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Coverage
+coverage/
+
+# Logs
+*.log
+pino.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Drizzle
+src/infrastructure/database/migrations/meta/
+
+# TypeScript cache
+*.tsbuildinfo
