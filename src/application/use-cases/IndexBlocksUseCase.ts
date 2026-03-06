@@ -18,6 +18,8 @@ export interface IndexBlocksOutput {
   skippedEvents: number;
 }
 
+const CHUNK_SIZE = 10;
+
 export class IndexBlocksUseCase {
   constructor(
     private readonly blockchainClient: IBlockchainClient,
@@ -38,45 +40,48 @@ export class IndexBlocksUseCase {
       throw new InvalidBlockRangeError(fromBlock, toBlock);
     }
 
-    log.info('Indexing blocks', { fromBlock, toBlock });
-
-    const logs = await this.blockchainClient.getErc20Logs({
-      fromBlock: BigInt(fromBlock),
-      toBlock: BigInt(toBlock),
-      ...(input.tokenAddress !== undefined ? { tokenAddress: input.tokenAddress } : {}),
-    });
-
-    log.info('Fetched ERC-20 Transfer logs', { count: logs.length });
+    const chunks = this.buildChunks(fromBlock, toBlock);
+    log.info('Indexing blocks', { fromBlock, toBlock, totalChunks: chunks.length });
 
     let savedEvents = 0;
     let skippedEvents = 0;
 
-    for (const log_ of logs) {
-      const eventId = EventId.create(
-        input.chainId,
-        Number(log_.blockNumber),
-        log_.transactionHash,
-        log_.logIndex,
-      );
+    for (const chunk of chunks) {
+      log.debug('Processing chunk', { chunkFrom: chunk.from, chunkTo: chunk.to });
 
-      const existing = await this.rawEventRepository.findByEventId(eventId.toString());
-      if (existing) {
-        skippedEvents++;
-        continue;
-      }
-
-      await this.rawEventRepository.save({
-        chainId: input.chainId,
-        blockNumber: Number(log_.blockNumber),
-        txHash: log_.transactionHash,
-        logIndex: log_.logIndex,
-        fromAddress: log_.fromAddress,
-        toAddress: log_.toAddress,
-        tokenAddress: log_.tokenAddress,
-        amount: log_.amount,
+      const logs = await this.blockchainClient.getErc20Logs({
+        fromBlock: BigInt(chunk.from),
+        toBlock: BigInt(chunk.to),
+        ...(input.tokenAddress !== undefined ? { tokenAddress: input.tokenAddress } : {}),
       });
 
-      savedEvents++;
+      for (const log_ of logs) {
+        const eventId = EventId.create(
+          input.chainId,
+          Number(log_.blockNumber),
+          log_.transactionHash,
+          log_.logIndex,
+        );
+
+        const existing = await this.rawEventRepository.findByEventId(eventId.toString());
+        if (existing) {
+          skippedEvents++;
+          continue;
+        }
+
+        await this.rawEventRepository.save({
+          chainId: input.chainId,
+          blockNumber: Number(log_.blockNumber),
+          txHash: log_.transactionHash,
+          logIndex: log_.logIndex,
+          fromAddress: log_.fromAddress,
+          toAddress: log_.toAddress,
+          tokenAddress: log_.tokenAddress,
+          amount: log_.amount,
+        });
+
+        savedEvents++;
+      }
     }
 
     await this.checkpointRepository.save({ chainId: input.chainId, lastProcessedBlock: toBlock });
@@ -88,5 +93,15 @@ export class IndexBlocksUseCase {
       savedEvents,
       skippedEvents,
     };
+  }
+
+  private buildChunks(from: number, to: number): Array<{ from: number; to: number }> {
+    const chunks: Array<{ from: number; to: number }> = [];
+    let cursor = from;
+    while (cursor <= to) {
+      chunks.push({ from: cursor, to: Math.min(cursor + CHUNK_SIZE - 1, to) });
+      cursor += CHUNK_SIZE;
+    }
+    return chunks;
   }
 }
