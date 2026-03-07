@@ -11,14 +11,14 @@ async function runMigrations(): Promise<void> {
   const migrationClient = postgres(databaseUrl, { max: 1 });
   const db = drizzle(migrationClient);
 
-  console.log('Running migrations...');
+  process.stdout.write('Running migrations...\n');
   await migrate(db, { migrationsFolder: './src/infrastructure/database/migrations' });
-  console.log('Migrations complete.');
+  process.stdout.write('Migrations complete.\n');
 
   await migrationClient.end();
 }
 
 runMigrations().catch((err) => {
-  console.error('Migration failed:', err);
+  process.stderr.write(`Migration failed: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);
 });

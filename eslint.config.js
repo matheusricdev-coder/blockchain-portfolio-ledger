@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
+import globals from 'globals';
 
 export default [
   js.configs.recommended,
@@ -8,8 +9,11 @@ export default [
     files: ['src/**/*.ts', 'tests/**/*.ts'],
     languageOptions: {
       parser: tsParser,
+      globals: {
+        ...globals.node,
+      },
       parserOptions: {
-        project: './tsconfig.json',
+        project: './tsconfig.eslint.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -24,6 +28,15 @@ export default [
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       'no-console': 'warn',
+    },
+  },
+  {
+    files: ['tests/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
     },
   },
   {
