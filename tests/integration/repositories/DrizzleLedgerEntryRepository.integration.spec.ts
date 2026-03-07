@@ -11,9 +11,9 @@ let sql: postgres.Sql;
 let ledgerRepo: DrizzleLedgerEntryRepository;
 let rawEventRepo: DrizzleRawEventRepository;
 
-const TOKEN = '0xtoken000000000000000000000000000000000000';
-const WALLET_A = '0xaaaa000000000000000000000000000000000001';
-const WALLET_B = '0xbbbb000000000000000000000000000000000002';
+const TOKEN =    '0xAAAA111111111111111111111111111111111111';
+const WALLET_A = '0xAAAA000000000000000000000000000000000001';
+const WALLET_B = '0xBBBB000000000000000000000000000000000002';
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16-alpine').start();
