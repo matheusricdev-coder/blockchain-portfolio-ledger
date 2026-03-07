@@ -24,8 +24,8 @@ Thumbs.db
 .vscode/settings.json
 .idea/
 
-# Drizzle
-src/infrastructure/database/migrations/meta/
+# Drizzle (generated snapshots only, not journal)
+# src/infrastructure/database/migrations/meta/
 
 # TypeScript cache
 *.tsbuildinfo
