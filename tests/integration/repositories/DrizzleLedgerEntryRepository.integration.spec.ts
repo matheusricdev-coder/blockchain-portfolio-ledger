@@ -2,6 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+import path from 'path';
 import * as schema from '../../../src/infrastructure/database/schema';
 import { DrizzleLedgerEntryRepository } from '../../../src/infrastructure/database/repositories/DrizzleLedgerEntryRepository';
 import { DrizzleRawEventRepository } from '../../../src/infrastructure/database/repositories/DrizzleRawEventRepository';
@@ -19,7 +20,7 @@ beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16-alpine').start();
   sql = postgres(container.getConnectionUri());
   const db = drizzle(sql, { schema });
-  await migrate(db, { migrationsFolder: './src/infrastructure/database/migrations' });
+  await migrate(db, { migrationsFolder: path.resolve(__dirname, '../../../src/infrastructure/database/migrations') });
   ledgerRepo = new DrizzleLedgerEntryRepository(db);
   rawEventRepo = new DrizzleRawEventRepository(db);
 }, 90000);
