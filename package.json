@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "blockchain-portfolio-ledger",
   "version": "0.1.0",
   "description": "Deterministic off-chain ledger for ERC-20 events",
