@@ -2,6 +2,11 @@ import Fastify from 'fastify';
 import { sql } from 'drizzle-orm';
 import { Queue } from 'bullmq';
 import { env } from './shared/config/env.js';
+import {
+  register,
+  httpRequestsTotal,
+  httpRequestDurationSeconds,
+} from './infrastructure/metrics/metrics.js';
 import { logger } from './infrastructure/logger/logger.js';
 import { db } from './infrastructure/database/client.js';
 import { blockchainClient } from './infrastructure/blockchain/viemClient.js';
@@ -86,6 +91,30 @@ async function bootstrap(): Promise<void> {
   // Fastify
   const app = Fastify({
     logger: false, // Using Pino directly
+  });
+
+  // Metrics — HTTP instrumentation
+  app.addHook('onRequest', async (request) => {
+    (request as { _startTime?: number })._startTime = Date.now();
+  });
+
+  app.addHook('onResponse', async (request, reply) => {
+    const start = (request as { _startTime?: number })._startTime ?? Date.now();
+    const durationSeconds = (Date.now() - start) / 1000;
+    const route = request.routeOptions?.url ?? request.url;
+    const labels = {
+      method: request.method,
+      route,
+      status_code: String(reply.statusCode),
+    };
+    httpRequestsTotal.inc(labels);
+    httpRequestDurationSeconds.observe(labels, durationSeconds);
+  });
+
+  // Metrics endpoint
+  app.get('/metrics', async (_, reply) => {
+    const metrics = await register.metrics();
+    return reply.header('Content-Type', register.contentType).send(metrics);
   });
 
   // Health — liveness
