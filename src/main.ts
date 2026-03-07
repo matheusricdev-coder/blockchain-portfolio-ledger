@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import { sql } from 'drizzle-orm';
 import { Queue } from 'bullmq';
+import fastifySwagger from '@fastify/swagger';
+import fastifySwaggerUi from '@fastify/swagger-ui';
 import { env } from './shared/config/env.js';
 import {
   register,
@@ -91,6 +93,20 @@ async function bootstrap(): Promise<void> {
   // Fastify
   const app = Fastify({
     logger: false, // Using Pino directly
+  });
+
+  await app.register(fastifySwagger, {
+    openapi: {
+      info: {
+        title: 'Blockchain Portfolio Ledger API',
+        version: '0.1.0',
+        description: 'Deterministic off-chain ledger for ERC-20 events',
+      },
+    },
+  });
+
+  await app.register(fastifySwaggerUi, {
+    routePrefix: '/docs',
   });
 
   // Metrics — HTTP instrumentation
