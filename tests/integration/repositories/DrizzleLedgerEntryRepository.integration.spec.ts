@@ -20,7 +20,9 @@ beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16-alpine').start();
   sql = postgres(container.getConnectionUri());
   const db = drizzle(sql, { schema });
-  await migrate(db, { migrationsFolder: path.resolve(__dirname, '../../../src/infrastructure/database/migrations') });
+  await migrate(db, {
+    migrationsFolder: path.resolve(__dirname, '../../../src/infrastructure/database/migrations'),
+  });
   ledgerRepo = new DrizzleLedgerEntryRepository(db);
   rawEventRepo = new DrizzleRawEventRepository(db);
 }, 90000);
