@@ -86,7 +86,11 @@ export class IndexBlocksUseCase {
 
     await this.checkpointRepository.save({ chainId: input.chainId, lastProcessedBlock: toBlock });
 
-    log.info('Indexing complete', { savedEvents, skippedEvents, processedBlocks: toBlock - fromBlock + 1 });
+    log.info('Indexing complete', {
+      savedEvents,
+      skippedEvents,
+      processedBlocks: toBlock - fromBlock + 1,
+    });
 
     return {
       processedBlocks: toBlock - fromBlock + 1,

@@ -3,7 +3,7 @@ import type { GenerateSnapshotUseCase } from '../../application/use-cases/Genera
 import type { ReconcileWalletUseCase } from '../../application/use-cases/ReconcileWalletUseCase.js';
 import type { ILedgerEntryRepository } from '../../domain/repositories/ILedgerEntryRepository.js';
 import type { ISnapshotRepository } from '../../domain/repositories/ISnapshotRepository.js';
-import type { WalletParams, TokenQuery } from '../schemas/wallet.schemas.js';
+import type { WalletParams, TokenQuery, StatementQuery } from '../schemas/wallet.schemas.js';
 import { DomainError } from '../../shared/errors/index.js';
 
 export class WalletController {
@@ -15,18 +15,24 @@ export class WalletController {
   ) {}
 
   async getStatement(
-    request: FastifyRequest<{ Params: WalletParams; Querystring: TokenQuery }>,
+    request: FastifyRequest<{ Params: WalletParams; Querystring: StatementQuery }>,
     reply: FastifyReply,
   ): Promise<void> {
     const { address } = request.params;
-    const { tokenAddress } = request.query;
+    const { tokenAddress, limit, offset } = request.query;
 
-    const entries = await this.ledgerEntryRepository.findByWallet(address, tokenAddress);
+    const result = await this.ledgerEntryRepository.findByWallet(address, tokenAddress, {
+      limit,
+      offset,
+    });
 
     await reply.send({
       walletAddress: address,
       tokenAddress,
-      entries: entries.map((e) => ({
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
+      entries: result.items.map((e) => ({
         id: e.id,
         amount: e.amount.toString(),
         referenceEventId: e.referenceEventId,

@@ -1,15 +1,17 @@
 import { z } from 'zod';
 
 export const walletParamsSchema = z.object({
-  address: z
-    .string()
-    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
 });
 
 export const tokenQuerySchema = z.object({
-  tokenAddress: z
-    .string()
-    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid token address'),
+  tokenAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid token address'),
+});
+
+export const statementQuerySchema = z.object({
+  tokenAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid token address'),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 export const reprocessBodySchema = z.object({
@@ -23,4 +25,5 @@ export const reprocessBodySchema = z.object({
 
 export type WalletParams = z.infer<typeof walletParamsSchema>;
 export type TokenQuery = z.infer<typeof tokenQuerySchema>;
+export type StatementQuery = z.infer<typeof statementQuerySchema>;
 export type ReprocessBody = z.infer<typeof reprocessBodySchema>;

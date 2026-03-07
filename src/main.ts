@@ -1,8 +1,11 @@
 import Fastify from 'fastify';
+import { sql } from 'drizzle-orm';
+import { Queue } from 'bullmq';
 import { env } from './shared/config/env.js';
 import { logger } from './infrastructure/logger/logger.js';
 import { db } from './infrastructure/database/client.js';
 import { blockchainClient } from './infrastructure/blockchain/viemClient.js';
+import { redisConnection } from './infrastructure/queue/connection.js';
 
 import {
   DrizzleRawEventRepository,
@@ -22,6 +25,9 @@ import { WalletController } from './api/controllers/WalletController.js';
 import { ReprocessController } from './api/controllers/ReprocessController.js';
 import { registerWalletRoutes } from './api/routes/wallet.routes.js';
 import { registerReprocessRoutes } from './api/routes/reprocess.routes.js';
+import { createIndexerWorker } from './jobs/indexer/indexer.worker.js';
+import { createSnapshotWorker } from './jobs/snapshot/snapshot.worker.js';
+import { createReconcilerWorker } from './jobs/reconciler/reconciler.worker.js';
 
 async function bootstrap(): Promise<void> {
   // Repositories
@@ -62,13 +68,59 @@ async function bootstrap(): Promise<void> {
   );
   const reprocessController = new ReprocessController(indexBlocksUseCase, normalizeEventsUseCase);
 
+  // Workers
+  const indexerWorker = createIndexerWorker(
+    indexBlocksUseCase,
+    normalizeEventsUseCase,
+    logger.child({ service: 'IndexerWorker' }),
+  );
+  const snapshotWorker = createSnapshotWorker(
+    generateSnapshotUseCase,
+    logger.child({ service: 'SnapshotWorker' }),
+  );
+  const reconcilerWorker = createReconcilerWorker(
+    reconcileWalletUseCase,
+    logger.child({ service: 'ReconcilerWorker' }),
+  );
+
   // Fastify
   const app = Fastify({
     logger: false, // Using Pino directly
   });
 
-  // Health
+  // Health — liveness
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+
+  // Health — readiness (DB + Redis)
+  app.get('/health/ready', async (_, reply) => {
+    const checks: Record<string, string> = {};
+    let httpStatus = 200;
+
+    try {
+      await db.execute(sql`SELECT 1`);
+      checks['db'] = 'ok';
+    } catch {
+      checks['db'] = 'error';
+      httpStatus = 503;
+    }
+
+    const healthQueue = new Queue('health-check', { connection: redisConnection });
+    try {
+      const client = await healthQueue.client;
+      await client.ping();
+      checks['redis'] = 'ok';
+    } catch {
+      checks['redis'] = 'error';
+      httpStatus = 503;
+    } finally {
+      await healthQueue.close();
+    }
+
+    return reply.status(httpStatus).send({
+      status: httpStatus === 200 ? 'ready' : 'not_ready',
+      checks,
+    });
+  });
 
   // Routes
   registerWalletRoutes(app, walletController);
@@ -77,12 +129,21 @@ async function bootstrap(): Promise<void> {
   // Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`Received ${signal}, shutting down gracefully`);
-    await app.close();
+    await Promise.all([
+      app.close(),
+      indexerWorker.close(),
+      snapshotWorker.close(),
+      reconcilerWorker.close(),
+    ]);
     process.exit(0);
   };
 
-  process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
-  process.on('SIGINT', () => { void shutdown('SIGINT'); });
+  process.on('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
+  process.on('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
 
   // Start
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
@@ -90,6 +151,8 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((err) => {
-  logger.fatal('Failed to start server', { error: err instanceof Error ? err.message : String(err) });
+  logger.fatal('Failed to start server', {
+    error: err instanceof Error ? err.message : String(err),
+  });
   process.exit(1);
 });

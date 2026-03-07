@@ -4,21 +4,23 @@ import type { WalletController } from '../controllers/WalletController.js';
 import {
   walletParamsSchema,
   tokenQuerySchema,
+  statementQuerySchema,
 } from '../schemas/wallet.schemas.js';
 
 const paramsJsonSchema = zodToJsonSchema(walletParamsSchema);
 const querystringJsonSchema = zodToJsonSchema(tokenQuerySchema);
+const statementQueryJsonSchema = zodToJsonSchema(statementQuerySchema);
 
-export function registerWalletRoutes(
-  fastify: FastifyInstance,
-  controller: WalletController,
-): void {
-  fastify.get<{ Params: { address: string }; Querystring: { tokenAddress: string } }>(
+export function registerWalletRoutes(fastify: FastifyInstance, controller: WalletController): void {
+  fastify.get<{
+    Params: { address: string };
+    Querystring: { tokenAddress: string; limit: number; offset: number };
+  }>(
     '/wallet/:address/statement',
     {
       schema: {
         params: paramsJsonSchema,
-        querystring: querystringJsonSchema,
+        querystring: statementQueryJsonSchema,
       },
     },
     (req, reply) => controller.getStatement(req, reply),
